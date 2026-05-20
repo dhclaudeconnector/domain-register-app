@@ -8,7 +8,7 @@ const LOG_LEVELS = {
 
 type LogLevel = keyof typeof LOG_LEVELS;
 
-const currentLogLevel: LogLevel = (process.env.NEXT_PUBLIC_LOG_LEVEL?.toLowerCase() as LogLevel) || 'info';
+const currentLogLevel: LogLevel = (process.env.NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_LOG_LEVEL?.toLowerCase() as LogLevel) || 'info';
 const isBrowser = typeof window !== 'undefined';
 
 function getLogLevelValue(level: LogLevel): number {

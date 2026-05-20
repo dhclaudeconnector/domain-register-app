@@ -52,7 +52,7 @@ for (const script of ['"test": "vitest run"', '"test:coverage": "vitest run --co
 
 const httpDpdns = readFileSync('http/dpdns.http', 'utf8');
 const httpCloudflare = readFileSync('http/cloudflare.http', 'utf8');
-for (const dotenvToken of ['{{$dotenv DPDNS_TEST_TOKEN}}', '{{$dotenv CLOUDFLARE_TEST_API_KEY}}', '{{$dotenv NEXT_PUBLIC_APP_URL}}']) {
+for (const dotenvToken of ['{{$dotenv DPDNS_CLOUDFLARED_MANAGER_DPDNS_TEST_TOKEN}}', '{{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_API_KEY}}', '{{$dotenv NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_APP_URL}}']) {
   if (!`${httpDpdns}
 ${httpCloudflare}`.includes(dotenvToken)) throw new Error(`HTTP suite missing dotenv token ${dotenvToken}`);
 }

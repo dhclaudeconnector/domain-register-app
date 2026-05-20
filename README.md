@@ -23,7 +23,43 @@ npm install
 npm run dev
 ```
 
-Fill all Firebase variables and `NEXT_PUBLIC_ENCRYPT_SALT` before running. Enable Google provider in Firebase Authentication and deploy `database.rules.json` to Realtime Database.
+Fill all Firebase variables and `NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT` before running. Enable Google provider in Firebase Authentication and deploy `database.rules.json` to Realtime Database.
+
+## Docker Deployment
+
+Bạn có thể chạy ứng dụng bằng Docker theo hai cách:
+
+### Cách 1: Sử dụng Docker Compose (Khuyến nghị)
+Sao chép cấu hình môi trường và khởi chạy ứng dụng:
+```bash
+cp .env.example .env.local
+# Điền đầy đủ các biến môi trường vào .env.local
+# Vì docker compose build sử dụng biến từ file .env để truyền build arguments, hãy sao chép hoặc tạo file .env:
+cp .env.local .env
+docker compose up --build
+```
+Ứng dụng sẽ chạy tại `http://localhost:3000`.
+
+### Cách 2: Sử dụng Docker CLI trực tiếp
+1. Build image với các build arguments cần thiết (Next.js bake các biến `NEXT_PUBLIC_*` vào client bundle khi build):
+```bash
+docker build -t domain-register-app \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_API_KEY="your_api_key" \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_AUTH_DOMAIN="your_auth_domain" \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_PROJECT_ID="your_project_id" \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_DATABASE_URL="your_database_url" \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_STORAGE_BUCKET="your_storage_bucket" \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_MESSAGING_SENDER_ID="your_sender_id" \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_APP_ID="your_app_id" \
+  --build-arg NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT="your_encrypt_salt" \
+  .
+```
+
+2. Chạy container:
+```bash
+docker run -p 3000:3000 --env-file .env.local domain-register-app
+```
+
 
 
 ## Tests
@@ -62,4 +98,4 @@ Add every `NEXT_PUBLIC_*` variable from `.env.example` to Vercel Project Setting
 
 ## Security note
 
-Credentials are encrypted client-side with `NEXT_PUBLIC_ENCRYPT_SALT + uid` before storage. This is suitable for the MVP described in the spec. For higher assurance, move secret handling to Firebase Functions or a dedicated backend so decrypted provider credentials never live in the browser.
+Credentials are encrypted client-side with `NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT + uid` before storage. This is suitable for the MVP described in the spec. For higher assurance, move secret handling to Firebase Functions or a dedicated backend so decrypted provider credentials never live in the browser.

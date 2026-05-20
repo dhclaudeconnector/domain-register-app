@@ -34,7 +34,7 @@ Danh sách các câu hỏi chưa có quyết định cuối cùng, cần đượ
 - Nếu thất bại: xem xét dùng Cloudflare DNS API với DigitalPlat NS thay vì tạo zone
 
 **OQ-05 (Encryption strategy):**
-- Short-term: Client-side AES với `uid + NEXT_PUBLIC_SALT` (chấp nhận được cho personal use)
+- Short-term: Client-side AES với `uid + NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT` (chấp nhận được cho personal use)
 - Long-term: Firebase Functions proxy để credentials không bao giờ ra client
 
 **OQ-10 (Firebase region):**

@@ -5,11 +5,11 @@ export const DEFAULT_SERVICE_ACCOUNT_PATH = '-gitignore/domain-register-app-demo
 export const DEFAULT_CONFIG_APP_PATH = '-gitignore/firebaseConfig-app.json';
 
 export function serviceAccountPath() {
-  return resolve(process.env.FIREBASE_SERVICE_ACCOUNT_PATH || DEFAULT_SERVICE_ACCOUNT_PATH);
+  return resolve(process.env.DPDNS_CLOUDFLARED_MANAGER_FIREBASE_SERVICE_ACCOUNT_PATH || DEFAULT_SERVICE_ACCOUNT_PATH);
 }
 
 export function configAppPath() {
-  return resolve(process.env.FIREBASE_CONFIG_APP_PATH || DEFAULT_CONFIG_APP_PATH);
+  return resolve(process.env.DPDNS_CLOUDFLARED_MANAGER_FIREBASE_CONFIG_APP_PATH || DEFAULT_CONFIG_APP_PATH);
 }
 
 export function readServiceAccount() {

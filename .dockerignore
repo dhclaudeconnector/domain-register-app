@@ -1,0 +1,31 @@
+node_modules
+.next
+out
+build
+dist
+.git
+.gitignore
+__tests__
+coverage
+.nyc_output
+.vscode
+.idea
+*.log
+firebase-debug.log
+.claude
+AGENT_SPEC.md
+TEST_PLAN.md
+docs
+http
+*.http
+package-lock.json
+# Tránh copy các file secrets nhạy cảm ngoại trừ file cấu hình cần cho build (nếu có)
+# Tuy nhiên, nếu dùng .env để build local thì có thể cho phép hoặc không
+# Ta sẽ ignore .env.local và các file .env khác để khuyến khích dùng build-args hoặc docker-compose
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+# Loại bỏ firebase service account nếu có trong gitignore
+-gitignore/

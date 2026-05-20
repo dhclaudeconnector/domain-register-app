@@ -1,13 +1,13 @@
-@appBaseUrl = {{$dotenv NEXT_PUBLIC_APP_URL}}
-@dpdnsToken = {{$dotenv DPDNS_TEST_TOKEN}}
-@testDomain = {{$dotenv DPDNS_TEST_DOMAIN}}
-@slotType = {{$dotenv DPDNS_TEST_SLOT_TYPE}}
-@cfEmail = {{$dotenv CLOUDFLARE_TEST_EMAIL}}
-@cfApiKey = {{$dotenv CLOUDFLARE_TEST_API_KEY}}
-@cfAccountId = {{$dotenv CLOUDFLARE_TEST_ACCOUNT_ID}}
-@zoneId = {{$dotenv CLOUDFLARE_TEST_ZONE_ID}}
-@ns1 = {{$dotenv DPDNS_TEST_NS1}}
-@ns2 = {{$dotenv DPDNS_TEST_NS2}}
+@appBaseUrl = {{$dotenv NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_APP_URL}}
+@dpdnsToken = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_DPDNS_TEST_TOKEN}}
+@testDomain = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_DPDNS_TEST_DOMAIN}}
+@slotType = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_DPDNS_TEST_SLOT_TYPE}}
+@cfEmail = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_EMAIL}}
+@cfApiKey = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_API_KEY}}
+@cfAccountId = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_ACCOUNT_ID}}
+@zoneId = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_ZONE_ID}}
+@ns1 = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_DPDNS_TEST_NS1}}
+@ns2 = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_DPDNS_TEST_NS2}}
 
 ### Flow 1 · Verify DPDNS token via local proxy
 POST {{appBaseUrl}}/api/proxy/dpdns
@@ -30,7 +30,7 @@ Content-Type: application/json
   "apiKey": "{{cfApiKey}}"
 }
 
-### Flow 3 · Create Cloudflare zone; copy result.id into CLOUDFLARE_TEST_ZONE_ID and name_servers into DPDNS_TEST_NS1/2
+### Flow 3 · Create Cloudflare zone; copy result.id into DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_ZONE_ID and name_servers into DPDNS_CLOUDFLARED_MANAGER_DPDNS_TEST_NS1/2
 POST {{appBaseUrl}}/api/proxy/cloudflare
 Content-Type: application/json
 

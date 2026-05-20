@@ -110,7 +110,7 @@ async function saveAdminCredentialAccount(
 
 export async function POST(request: Request) {
   // 1. Authenticate with API SECRET KEY
-  const secretKey = process.env.BACKEND_API_SECRET_KEY;
+  const secretKey = process.env.DPDNS_CLOUDFLARED_MANAGER_BACKEND_API_SECRET_KEY;
   if (!secretKey) {
     return NextResponse.json(
       { error: 'API Secret Key is not configured on the server.' },

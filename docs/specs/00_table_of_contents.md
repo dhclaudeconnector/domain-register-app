@@ -18,6 +18,7 @@
 | 8 | Milestones & Timeline | Phases, deliverables, target dates, critical path | 1–2 |
 | 9 | Risks & Mitigations | Risk register: likelihood, impact, mitigation | 1 |
 | 10 | Open Questions | Các quyết định còn TBD, owner, deadline | 1 |
+| 11 | Docker Deployment | Cấu trúc container Docker, build arguments và Compose | 1 |
 
 ---
 
@@ -36,16 +37,17 @@
 | # | Section | Status |
 |---|---------|--------|
 | 0 | Table of Contents | ✅ Complete |
-| 1 | Project Overview | ⏳ Pending |
-| 2 | Requirements | ⏳ Pending |
-| 3 | User Stories | ⏳ Pending |
-| 4 | System Architecture | ⏳ Pending |
-| 5 | Data Model | ⏳ Pending |
-| 6 | API / Interface Design | ⏳ Pending |
-| 7 | Security & Compliance | ⏳ Pending |
-| 8 | Milestones & Timeline | ⏳ Pending |
-| 9 | Risks & Mitigations | ⏳ Pending |
-| 10 | Open Questions | ⏳ Pending |
+| 1 | Project Overview | ✅ Complete |
+| 2 | Requirements | ✅ Complete |
+| 3 | User Stories | ✅ Complete |
+| 4 | System Architecture | ✅ Complete |
+| 5 | Data Model | ✅ Complete |
+| 6 | API / Interface Design | ✅ Complete |
+| 7 | Security & Compliance | ✅ Complete |
+| 8 | Milestones & Timeline | ✅ Complete |
+| 9 | Risks & Mitigations | ✅ Complete |
+| 10 | Open Questions | ✅ Complete |
+| 11 | Docker Deployment | ✅ Complete |
 
-**Total estimated sections:** 10
-**Status:** 0 / 10 sections complete
+**Total estimated sections:** 11
+**Status:** 11 / 11 sections complete

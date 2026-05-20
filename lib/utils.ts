@@ -25,7 +25,7 @@ export function toErrorMessage(error: unknown, fallback = 'Something went wrong'
 }
 
 export function isEmailAllowed(email?: string | null) {
-  const allowed = process.env.NEXT_PUBLIC_ALLOWED_EMAILS;
+  const allowed = process.env.NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ALLOWED_EMAILS;
   if (!allowed || allowed.trim() === '') return true;
   const list = allowed.split(/[;,|]+/).map(item => item.trim().toLowerCase()).filter(Boolean);
   if (!email) return false;

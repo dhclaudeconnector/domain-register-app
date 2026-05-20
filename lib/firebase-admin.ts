@@ -22,7 +22,7 @@ function base64url(value: any) {
 function getServiceAccount(): ServiceAccount {
   if (serviceAccountConfig) return serviceAccountConfig;
 
-  const envPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  const envPath = process.env.DPDNS_CLOUDFLARED_MANAGER_FIREBASE_SERVICE_ACCOUNT_PATH;
   const path = resolve(process.cwd(), /*turbopackIgnore: true*/ envPath || DEFAULT_SERVICE_ACCOUNT_PATH);
   
   if (!existsSync(path)) {

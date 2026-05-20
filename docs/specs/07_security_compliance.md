@@ -59,7 +59,7 @@ User ──Google OAuth──► Firebase Auth ──► ID Token (JWT)
 // Pseudo-code
 import CryptoJS from 'crypto-js';
 
-const ENCRYPT_KEY = process.env.NEXT_PUBLIC_ENCRYPT_SALT + user.uid;
+const ENCRYPT_KEY = process.env.NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT + user.uid;
 
 // Encrypt trước khi lưu Firebase
 const encrypted = CryptoJS.AES.encrypt(plainToken, ENCRYPT_KEY).toString();

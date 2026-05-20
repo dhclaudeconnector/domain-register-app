@@ -508,7 +508,7 @@ async function writeDailyLog(action: string, status: 'success' | 'failed', detai
 }
 
 export async function POST(request: Request) {
-  const secretKey = process.env.BACKEND_API_SECRET_KEY;
+  const secretKey = process.env.DPDNS_CLOUDFLARED_MANAGER_BACKEND_API_SECRET_KEY;
   if (!secretKey) {
     return NextResponse.json({ error: 'API Secret Key is not configured on the server.' }, { status: 500 });
   }
@@ -616,10 +616,10 @@ export async function callWithFallback(
 // lib/crypto.ts
 import CryptoJS from 'crypto-js';
 
-// Key = NEXT_PUBLIC_ENCRYPT_SALT + user.uid
+// Key = NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT + user.uid
 // KHÔNG dùng chỉ UID hoặc chỉ salt
 const getKey = (uid: string) =>
-  `${process.env.NEXT_PUBLIC_ENCRYPT_SALT}:${uid}`;
+  `${process.env.NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT}:${uid}`;
 
 export const encrypt = (plain: string, uid: string): string =>
   CryptoJS.AES.encrypt(plain, getKey(uid)).toString();
@@ -662,7 +662,7 @@ export const credentialAccountSchema = z.object({
 
 Hệ thống cung cấp cơ chế ghi log chuẩn hóa cho các API giao tiếp với bên thứ ba (Cloudflare và DPDNS).
 
-- **Biến môi trường:** `NEXT_PUBLIC_LOG_LEVEL` (giá trị: `debug`, `info`, `warn`, `error`, `none`).
+- **Biến môi trường:** `NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_LOG_LEVEL` (giá trị: `debug`, `info`, `warn`, `error`, `none`).
 - **An toàn bảo mật:** Tự động ẩn (mask) các thông tin nhạy cảm trong payload (như token, apiKey, Authorization headers) trước khi in ra log.
 - **Console Styling:** Sử dụng màu sắc khác nhau cho từng caption dịch vụ khi chạy ở client (`[Cloudflare API]`, `[DPDNS API]`).
 - **API Caller Integration:** Wrapper `callWithFallback` chịu trách nhiệm tự động ghi log thông tin Request và Response.
@@ -1027,28 +1027,28 @@ export type StepStatus = 'idle' | 'loading' | 'success' | 'error';
 # .env.local
 
 # Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_DATABASE_URL=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_API_KEY=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_DATABASE_URL=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_APP_ID=
 
 # Encryption salt (thêm vào uid khi derive AES key)
 # Đặt giá trị random string dài ≥ 32 chars
-NEXT_PUBLIC_ENCRYPT_SALT=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT=
 
 # Backend Secret Key cho các api route (e.g. /api/accounts)
-BACKEND_API_SECRET_KEY=
+DPDNS_CLOUDFLARED_MANAGER_BACKEND_API_SECRET_KEY=
 
 # Danh sách email được phép đăng nhập ứng dụng (phân cách bởi dấu ; hoặc , hoặc |)
 # Ví dụ: user1@example.com;user2@example.com,user3@example.com
 # Nếu bỏ trống, tất cả mọi email đều được phép truy cập.
-NEXT_PUBLIC_ALLOWED_EMAILS=
+NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ALLOWED_EMAILS=
 
 # (Optional) Firebase region — khuyến nghị asia-southeast1 cho VN users
-# FIREBASE_REGION=asia-southeast1
+# DPDNS_CLOUDFLARED_MANAGER_FIREBASE_REGION=asia-southeast1
 ```
 
 ---
@@ -1125,8 +1125,31 @@ NEXT_PUBLIC_ALLOWED_EMAILS=
 □ [ ] Responsive: mobile (375px) + tablet + desktop
 □ [ ] Vercel deployment + env vars
 □ [ ] PWA: webapp manifest.json + sw.js + PWARegistration client provider
+□ [ ] Docker: Dockerfile + docker-compose.yml + .dockerignore configured
 ```
 
 ---
 
-*Agent: Đọc toàn bộ spec này trước khi bắt đầu viết bất kỳ dòng code nào. Section 5.2 (Firebase Key Sanitization), Section 7 (CORS Dual-Path) và Section 8.4 (Logger) là các yêu cầu kỹ thuật quan trọng.*
+## 20. DOCKER DEPLOYMENT SPECIFICATION
+
+Ứng dụng hỗ trợ đóng gói bằng Docker cho môi trường production và phát triển thử nghiệm thông qua mô hình **Next.js Standalone Output** để giảm thiểu tối đa kích thước ảnh.
+
+### 20.1 Dockerfile Structure (Multi-Stage)
+1. **deps stage**: Cài đặt gói thư viện bằng `npm ci`. Sử dụng base image `node:20-alpine`.
+2. **builder stage**:
+   - Nhận các build arguments (`ARG`) cho biến môi trường `NEXT_PUBLIC_*` (do Next.js đóng gói các giá trị này vào file JS tĩnh trong lúc build).
+   - Chạy lệnh `npm run build` để xuất kết quả build standalone.
+3. **runner stage**:
+   - Chạy với quyền hạn bị hạn chế (non-root `nextjs` user).
+   - Sao chép thư mục `.next/standalone`, `.next/static` và `public` tương ứng từ build stage.
+   - Lắng nghe tại port `3000`, thiết lập `HOSTNAME="0.0.0.0"`.
+
+### 20.2 Docker Compose Configuration
+- Service name: `domain-register-app`.
+- Ánh xạ cổng: `3000:3000`.
+- Nạp tệp cấu hình môi trường runtime từ `.env.local`.
+- Tự động nạp các build-time args từ tệp `.env` ở máy host.
+
+---
+
+*Agent: Đọc toàn bộ spec này trước khi bắt đầu viết bất kỳ dòng code nào. Section 5.2 (Firebase Key Sanitization), Section 7 (CORS Dual-Path), Section 8.4 (Logger) và Section 20 (Docker) là các yêu cầu kỹ thuật quan trọng.*

@@ -23,7 +23,7 @@ export function CredentialsForm({
   onOpenPlayground?: (accountId: string) => void;
 }) {
   const user = useAppStore((state) => state.user);
-  const accounts = useAppStore((state) => state.accounts);
+  const accounts = useAppStore((state) => state.accounts) || [];
   const setAccounts = useAppStore((state) => state.setAccounts);
   const { notifyError, notifySuccess } = useFloatMessage();
 

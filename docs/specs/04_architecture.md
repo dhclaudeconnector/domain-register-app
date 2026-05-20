@@ -128,7 +128,7 @@ User bấm "Register Domain"
 | **Authentication** | **Firebase Authentication** | Google Sign-In, bảo vệ data per-uid |
 | **Form + Validation** | **react-hook-form + Zod** (latest) | Type-safe, DX tốt, tích hợp shadcn/ui |
 | **Encryption** | **CryptoJS** (latest) | AES-256-GCM cho credentials trong Firebase |
-| **Deployment** | **Vercel** (free tier) | Zero-config Next.js, edge functions |
+| **Deployment** | **Vercel** (free tier) / **Docker** | Zero-config Next.js, edge functions / Multi-stage production container |
 | **Icons** | **Lucide React** (latest) | Consistent icon set, tree-shakeable |
 
 > **Nguyên tắc version:** Không pin cụ thể version trong `package.json`. Dùng `"next": "latest"`, `"typescript": "latest"`, v.v. Chỉ pin khi có breaking change được xác nhận.
@@ -186,18 +186,22 @@ domain-register-app/
 
 ## 4.6 Deployment Architecture
 
+Ứng dụng hỗ trợ hai cơ chế triển khai chính: Vercel (Cloud Serverless) và Docker (Container hóa).
+
+### 4.6.1 Triển khai trên Vercel (Mặc định)
+
 ```
 ┌───────────────────────────────────────────────────────┐
-│                    Vercel (Edge Network)               │
-│                                                        │
+│                    Vercel (Edge Network)              │
+│                                                       │
 │   Next.js App (Static + Edge Functions)               │
 │   + API Routes: /api/proxy/* (Serverless)             │
-│                                                        │
-│   Environment Variables:                               │
-│   NEXT_PUBLIC_FIREBASE_API_KEY                        │
-│   NEXT_PUBLIC_FIREBASE_PROJECT_ID                     │
-│   NEXT_PUBLIC_FIREBASE_DATABASE_URL                   │
-│   NEXT_PUBLIC_ENCRYPT_SALT  (for AES key derive)     │
+│                                                       │
+│   Environment Variables (Configured on Vercel Dashboard):│
+│   NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_API_KEY │
+│   NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_PROJECT_ID │
+│   NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_DATABASE_URL │
+│   NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT (AES)│
 └───────────────────────────────────────────────────────┘
                          │ HTTPS
                          ▼
@@ -207,3 +211,34 @@ domain-register-app/
 │  Realtime Database (domains, credentials)             │
 └───────────────────────────────────────────────────────┘
 ```
+
+### 4.6.2 Triển khai trên Docker (Container)
+
+Ứng dụng có thể được chạy dưới dạng một Docker Container độc lập sử dụng Multi-stage build để tối ưu hóa hiệu suất và giảm thiểu kích thước hình ảnh thông qua tính năng `standalone` của Next.js.
+
+```
+┌───────────────────────────────────────────────────────┐
+│              Docker Container (Host Port 3000)        │
+│                                                       │
+│   Node.js (Alpine Base) Run environment               │
+│   ├── public/ (Static resources)                      │
+│   ├── .next/static/ (Compiled JS/CSS files)           │
+│   └── server.js (Next.js standalone entry point)      │
+│                                                       │
+│   Build Arguments (Inlined at build-time):            │
+│   NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_FIREBASE_API_KEY │
+│   ... (all NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_* var)│
+│                                                       │
+│   Runtime Env (Loaded from .env.local on host):       │
+│   PORT=3000                                           │
+│   DPDNS_CLOUDFLARED_MANAGER_BACKEND_API_SECRET_KEY    │
+└───────────────────────────────────────────────────────┘
+                         │ HTTPS
+                         ▼
+┌───────────────────────────────────────────────────────┐
+│              Firebase (Google Cloud)                  │
+│  Authentication (Google Sign-In)                      │
+│  Realtime Database (domains, credentials)             │
+└───────────────────────────────────────────────────────┘
+```
+

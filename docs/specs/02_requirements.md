@@ -87,7 +87,7 @@
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-060 | Cung cấp API backend `POST /api/accounts` cho phép gọi từ ngoài vào để quản lý (thêm/cập nhật) tài khoản credentials. | MUST |
-| FR-061 | API backend bắt buộc được xác thực bằng Header `Authorization: Bearer <BACKEND_API_SECRET_KEY>`, sử dụng khóa bí mật cấu hình qua biến môi trường. Nếu không khớp sẽ bị từ chối với mã lỗi 401 Unauthorized. | MUST |
+| FR-061 | API backend bắt buộc được xác thực bằng Header `Authorization: Bearer <DPDNS_CLOUDFLARED_MANAGER_BACKEND_API_SECRET_KEY>`, sử dụng khóa bí mật cấu hình qua biến môi trường. Nếu không khớp sẽ bị từ chối với mã lỗi 401 Unauthorized. | MUST |
 | FR-062 | Cho phép thêm/cập nhật thông tin credentials theo từng service riêng lẻ (DPDNS hoặc Cloudflare) chỉ bằng cách truyền `email` định danh. | MUST |
 | FR-063 | Logic kiểm tra: tìm tài khoản theo `email` trong danh sách accounts của user. Nếu tồn tại, cập nhật credentials của service tương ứng; nếu chưa tồn tại, tạo mới tài khoản với nhãn mặc định. | MUST |
 | FR-064 | Ghi log hệ thống theo ngày (Daily Logging) vào node `/logs/{YYYY-MM-DD}/{timestamp}` đối với mọi hành động gọi API backend (thành công hoặc thất bại). | MUST |
@@ -98,9 +98,9 @@
 
 | ID | Requirement | Priority |
 |-------|-------------|----------|
-| FR-070 | Hỗ trợ cấu hình danh sách email được phép đăng nhập ứng dụng thông qua biến môi trường `NEXT_PUBLIC_ALLOWED_EMAILS`. | MUST |
+| FR-070 | Hỗ trợ cấu hình danh sách email được phép đăng nhập ứng dụng thông qua biến môi trường `NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ALLOWED_EMAILS`. | MUST |
 | FR-071 | Danh sách email trong cấu hình có thể được phân tách bằng các ký tự `;` hoặc `,` hoặc `|`. | MUST |
-| FR-072 | Nếu biến môi trường `NEXT_PUBLIC_ALLOWED_EMAILS` bỏ trống hoặc không được cấu hình, hệ thống mặc định cho phép mọi email đều có thể đăng nhập. | MUST |
+| FR-072 | Nếu biến môi trường `NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ALLOWED_EMAILS` bỏ trống hoặc không được cấu hình, hệ thống mặc định cho phép mọi email đều có thể đăng nhập. | MUST |
 | FR-073 | Khi người dùng thực hiện đăng nhập bằng Google Sign-In hoặc khi ứng dụng tải lại phiên cũ (session), hệ thống phải kiểm tra xem email của người dùng có thuộc danh sách được cho phép hay không. | MUST |
 | FR-074 | Nếu email của người dùng không được phép truy cập, hệ thống lập tức từ chối, hiển thị thông báo lỗi rõ ràng cho người dùng, tự động đăng xuất tài khoản Firebase và xóa dữ liệu cục bộ để đảm bảo an toàn. | MUST |
 

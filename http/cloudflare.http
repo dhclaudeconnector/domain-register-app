@@ -1,10 +1,10 @@
 @cfBaseUrl = https://api.cloudflare.com/client/v4
-@appBaseUrl = {{$dotenv NEXT_PUBLIC_APP_URL}}
-@cfEmail = {{$dotenv CLOUDFLARE_TEST_EMAIL}}
-@cfApiKey = {{$dotenv CLOUDFLARE_TEST_API_KEY}}
-@cfAccountId = {{$dotenv CLOUDFLARE_TEST_ACCOUNT_ID}}
-@zoneName = {{$dotenv CLOUDFLARE_TEST_ZONE_NAME}}
-@zoneId = {{$dotenv CLOUDFLARE_TEST_ZONE_ID}}
+@appBaseUrl = {{$dotenv NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_APP_URL}}
+@cfEmail = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_EMAIL}}
+@cfApiKey = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_API_KEY}}
+@cfAccountId = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_ACCOUNT_ID}}
+@zoneName = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_ZONE_NAME}}
+@zoneId = {{$dotenv DPDNS_CLOUDFLARED_MANAGER_CLOUDFLARE_TEST_ZONE_ID}}
 
 ### Cloudflare · Verify credentials (direct)
 GET {{cfBaseUrl}}/user

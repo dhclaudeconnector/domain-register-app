@@ -19,6 +19,7 @@
 | 8 | Milestones & Timeline | 08_milestones_timeline.md | ✅ |
 | 9 | Risks & Mitigations | 09_risks_mitigations.md | ✅ |
 | 10 | Open Questions | 10_open_questions.md | ✅ |
+| 11 | Docker Deployment | 11_docker_deployment.md | ✅ |
 
 ---
 
@@ -29,8 +30,8 @@
 | **Project** | Domain Register App |
 | **APIs** | DigitalPlat DPDNS + Cloudflare v4 + Firebase |
 | **Stack** | Next.js 14, TypeScript, Tailwind, Firebase |
-| **Deploy** | Vercel (free tier) |
+| **Deploy** | Vercel (free tier) + Docker Container |
 | **Timeline** | ~15 ngày (1 developer) |
-| **Sections** | 10 / 10 complete |
+| **Sections** | 11 / 11 complete |
 
 **All sections complete. Spec ready for review.**

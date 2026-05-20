@@ -1,9 +1,9 @@
 import CryptoJS from 'crypto-js';
 
 const getKey = (uid: string) => {
-  const salt = process.env.NEXT_PUBLIC_ENCRYPT_SALT;
+  const salt = process.env.NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT;
   if (!salt) {
-    throw new Error('NEXT_PUBLIC_ENCRYPT_SALT is missing');
+    throw new Error('NEXT_PUBLIC_DPDNS_CLOUDFLARED_MANAGER_ENCRYPT_SALT is missing');
   }
   return `${salt}:${uid}`;
 };
@@ -15,6 +15,11 @@ export const encrypt = (plain: string, uid: string): string => {
 
 export const decrypt = (cipher: string, uid: string): string => {
   if (!cipher) return '';
-  const bytes = CryptoJS.AES.decrypt(cipher, getKey(uid));
-  return bytes.toString(CryptoJS.enc.Utf8);
+  try {
+    const bytes = CryptoJS.AES.decrypt(cipher, getKey(uid));
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    return decrypted;
+  } catch (err) {
+    return '';
+  }
 };
