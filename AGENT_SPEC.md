@@ -48,6 +48,8 @@ domain-register-app/
 │   │   ├── page.tsx                    # Dashboard — domain list
 │   │   └── settings/page.tsx           # Settings — credentials
 │   ├── api/
+│   │   ├── accounts/
+│   │   │   └── route.ts                # Backend Accounts Manager API
 │   │   └── proxy/
 │   │       ├── dpdns/route.ts          # DPDNS CORS proxy
 │   │       └── cloudflare/route.ts     # Cloudflare CORS proxy
@@ -210,18 +212,24 @@ Right: user avatar + dropdown (Profile / Logout)
   "users": {
     "<uid>": {
       "settings": {
-        "credentials": {
-          "dpdns": {
-            "token": "<encrypted>",
-            "verified": true,
-            "verified_at": 1716192000000
-          },
-          "cloudflare": {
-            "email": "user@example.com",
-            "api_key": "<encrypted>",
-            "account_id": "01a7362d577a6c3019a474fd6f485823",
-            "verified": true,
-            "verified_at": 1716192000000
+        "accounts": {
+          "<accountId>": {
+            "id": "acc_default",
+            "name": "Default Account",
+            "dpdns": {
+              "token": "<encrypted>",
+              "verified": true,
+              "verified_at": 1716192000000
+            },
+            "cloudflare": {
+              "email": "user@example.com",
+              "api_key": "<encrypted>",
+              "account_id": "01a7362d577a6c3019a474fd6f485823",
+              "verified": true,
+              "verified_at": 1716192000000
+            },
+            "created_at": 1716192000000,
+            "updated_at": 1716192000000
           }
         },
         "updated_at": 1716192000000
@@ -245,7 +253,8 @@ Right: user avatar + dropdown (Profile / Logout)
           "status": "active",
           "notes": "",
           "created_at": 1716192000000,
-          "updated_at": 1716192000000
+          "updated_at": 1716192000000,
+          "credentialAccountId": "acc_default"
         }
       }
     }
@@ -316,13 +325,16 @@ export function fromFirebaseKey(key: string): string {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
+        "settings": {
+          "accounts": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        },
         "domains": {
           ".indexOn": ["created_at", "status"],
           "$domainId": {
-            ".validate": "newData.hasChildren(['name', 'namespace', 'fqdn', 'status', 'created_at'])
-              && newData.child('fqdn').isString()
-              && newData.child('status').val().matches(/^(active|pending|error|deleted)$/)
-              && newData.child('created_at').isNumber()"
+            ".validate": "newData.hasChildren(['name', 'namespace', 'fqdn', 'status', 'created_at'])"
           }
         }
       }
@@ -330,6 +342,7 @@ export function fromFirebaseKey(key: string): string {
   }
 }
 ```
+
 
 ### 5.4 Domain Status State Machine
 
@@ -472,6 +485,93 @@ export async function POST(req: NextRequest) {
 }
 ```
 
+### 7.2.1 Next.js API Route — Backend Accounts Manager
+
+API cho phép thêm/cập nhật thông tin tài khoản credentials từ backend bên ngoài, kiểm tra email trùng và ghi log theo ngày.
+
+```typescript
+// app/api/accounts/route.ts
+import { NextResponse } from 'next/server';
+import { CredentialsService } from '@/services/credentials.service';
+import { db } from '@/lib/firebase';
+import { ref as dbRef, set } from 'firebase/database';
+
+async function writeDailyLog(action: string, status: 'success' | 'failed', details: Record<string, any>) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const timestamp = Date.now();
+    const logRef = dbRef(db, `logs/${today}/${timestamp}`);
+    await set(logRef, { action, status, timestamp, ...details });
+  } catch (logError) {
+    console.error('Failed to write daily log:', logError);
+  }
+}
+
+export async function POST(request: Request) {
+  const secretKey = process.env.BACKEND_API_SECRET_KEY;
+  if (!secretKey) {
+    return NextResponse.json({ error: 'API Secret Key is not configured on the server.' }, { status: 500 });
+  }
+
+  const authHeader = request.headers.get('authorization');
+  const clientToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+
+  if (!clientToken || clientToken !== secretKey) {
+    await writeDailyLog('AUTH_FAILED', 'failed', { ip, message: 'Unauthorized access attempt.' });
+    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    return NextResponse.json({ error: 'Invalid JSON request body.' }, { status: 400 });
+  }
+
+  const { userId, service, name, email, token, apiKey, accountId } = body;
+
+  if (!userId || !service || !email) {
+    return NextResponse.json({ error: 'Missing required fields (userId, service, email).' }, { status: 400 });
+  }
+
+  try {
+    const existingAccounts = await CredentialsService.load(userId);
+    const existing = existingAccounts.find(acc => acc.cloudflareEmail?.toLowerCase() === email.toLowerCase());
+
+    let resultId = '';
+    let isUpdate = false;
+
+    if (existing) {
+      isUpdate = true;
+      resultId = existing.id;
+      if (service === 'dpdns') {
+        if (!token) return NextResponse.json({ error: 'Missing DPDNS token.' }, { status: 400 });
+        await CredentialsService.save(userId, { ...existing, name: name || existing.name, dpdnsToken: token }, { dpdns: true, cloudflare: existing.cloudflareVerified });
+      } else {
+        if (!apiKey || !accountId) return NextResponse.json({ error: 'Missing CF credentials.' }, { status: 400 });
+        await CredentialsService.save(userId, { ...existing, name: name || existing.name, cloudflareEmail: email, cloudflareApiKey: apiKey, cloudflareAccountId: accountId }, { dpdns: existing.dpdnsVerified, cloudflare: true });
+      }
+    } else {
+      if (service === 'dpdns') {
+        if (!token) return NextResponse.json({ error: 'Missing DPDNS token.' }, { status: 400 });
+        resultId = await CredentialsService.save(userId, { id: '', name: name || 'DPDNS Account', dpdnsToken: token, cloudflareEmail: email, cloudflareApiKey: '', cloudflareAccountId: '', dpdnsVerified: true, cloudflareVerified: false }, { dpdns: true, cloudflare: false });
+      } else {
+        if (!apiKey || !accountId) return NextResponse.json({ error: 'Missing CF credentials.' }, { status: 400 });
+        resultId = await CredentialsService.save(userId, { id: '', name: name || 'Cloudflare Account', dpdnsToken: '', cloudflareEmail: email, cloudflareApiKey: apiKey, cloudflareAccountId: accountId, dpdnsVerified: false, cloudflareVerified: true }, { dpdns: false, cloudflare: true });
+      }
+    }
+
+    const logAction = `${isUpdate ? 'UPDATE' : 'CREATE'}_${service.toUpperCase()}_ACCOUNT`;
+    await writeDailyLog(logAction, 'success', { ip, userId, email, accountId: resultId });
+
+    return NextResponse.json({ success: true, accountId: resultId, action: isUpdate ? 'updated' : 'created' });
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+  }
+}
+```
+
 ### 7.3 Client-side Dual-Path Wrapper
 
 ```typescript
@@ -530,11 +630,11 @@ export const decrypt = (cipher: string, uid: string): string =>
 
 ### 8.2 Credentials Storage Rules
 
-- ✅ Lưu encrypted trong Firebase: `/users/{uid}/settings/credentials`
+- ✅ Lưu encrypted trong Firebase: `/users/{uid}/settings/accounts/{accountId}`
 - ❌ KHÔNG lưu trong `localStorage` / `sessionStorage` / URL params
-- ✅ Giữ decrypted trong Zustand memory (React state)
+- ✅ Giữ decrypted trong Zustand memory (React state) hoặc loading context
 - ✅ Clear state khi user logout
-- ✅ Hiển thị masked: `eyJhbG...****...xYz`, có nút Reveal (auto-hide sau 10s)
+- ✅ Hiển thị masked: `eyJhbG...****...xYz`, hỗ trợ eye icon toggling
 
 ### 8.3 Input Validation (Zod)
 
@@ -549,12 +649,23 @@ export const subdomainSchema = z
 
 export const namespaceSchema = z.enum(['.dpdns.org', '.us.kg', '.qzz.io', '.xx.kg']);
 
-export const credentialsSchema = z.object({
-  dpdnsToken: z.string().min(1).trim(),
-  cloudflareEmail: z.string().email(),
-  cloudflareApiKey: z.string().length(37),  // Cloudflare Global API Key = 37 chars
+export const credentialAccountSchema = z.object({
+  name: z.string().min(1, 'Account name is required').max(50),
+  dpdnsToken: z.string().min(1, 'DPDNS Token is required').trim(),
+  cloudflareEmail: z.string().email('Invalid email address'),
+  cloudflareApiKey: z.string().min(1, 'Cloudflare API Key is required').trim(),
+  cloudflareAccountId: z.string().optional(),
 });
 ```
+
+### 8.4 Logger & API Diagnostics
+
+Hệ thống cung cấp cơ chế ghi log chuẩn hóa cho các API giao tiếp với bên thứ ba (Cloudflare và DPDNS).
+
+- **Biến môi trường:** `NEXT_PUBLIC_LOG_LEVEL` (giá trị: `debug`, `info`, `warn`, `error`, `none`).
+- **An toàn bảo mật:** Tự động ẩn (mask) các thông tin nhạy cảm trong payload (như token, apiKey, Authorization headers) trước khi in ra log.
+- **Console Styling:** Sử dụng màu sắc khác nhau cho từng caption dịch vụ khi chạy ở client (`[Cloudflare API]`, `[DPDNS API]`).
+- **API Caller Integration:** Wrapper `callWithFallback` chịu trách nhiệm tự động ghi log thông tin Request và Response.
 
 ---
 
@@ -625,16 +736,19 @@ interface Step {
 ```
 Layout: feature-card style (white, rounded-xl, 32px padding)
 
-Section: DigitalPlat DPDNS
-  - Token input (masked, pill input + eye icon)
-  - [Test Connection] button → gọi EP-DPDNS-01
-  - Status: ✅ Connected / ❌ Invalid token
+Danh sách tài khoản (Accounts Dashboard):
+  - Hiển thị danh sách accounts dạng card/row.
+  - Mỗi hàng hiển thị: Account Name, Cloudflare Email, và các badge trạng thái connection (DPDNS / CF).
+  - Có nút "Edit" và "Delete" cho từng account.
+  - Nút "Add Account" mở form nhập thông tin tài khoản mới.
 
-Section: Cloudflare
-  - Email input (text)
-  - API Key input (masked, pill input + eye icon)
-  - [Save & Test →] button → gọi EP-CF-01
-  - Status: ✅ Connected as "username" / ❌ Invalid credentials
+Form tài khoản (Account Form - Thêm/Sửa):
+  - Trường: Account Friendly Name (text)
+  - Trường: DPDNS Token (masked input + eye icon) + nút [Test DPDNS]
+  - Trường: Cloudflare Email (text)
+  - Trường: Cloudflare Global API Key (masked input + eye icon) + nút [Test Cloudflare]
+  - Trường: Cloudflare Account ID (optional, tự động lấy khi test nếu trống)
+  - Nút [Save] kiểm tra hợp lệ của cả 2 API trước khi mã hóa AES-256 và lưu vào database.
 ```
 
 ### 9.7 Confirm Delete Dialog
@@ -642,9 +756,14 @@ Section: Cloudflare
 ```
 Title: "Delete Domain"
 Body: "Are you sure you want to remove myapp.dpdns.org?"
-Warning (nếu domain active): "⚠️ Deleting from DPDNS will put it in pendingdelete 
-  status. DNS stops immediately, domain released after 7 days."
-Checkbox: "Also delete Cloudflare Zone" (mặc định unchecked)
+Warning: "⚠️ Deleting from DPDNS will put it in pendingdelete status. DNS stops immediately, domain released after 7 days."
+
+Chọn tài khoản thực thi (API Cleanup Account):
+  - Dropdown chọn tài khoản dùng để gọi API delete (mặc định chọn tài khoản liên kết cũ).
+  - Cảnh báo nếu tài khoản liên kết cũ bị thiếu/đã bị xóa, cho phép chọn tài khoản khác hoặc chọn "Delete from app only".
+  - Lựa chọn: "Delete from app only" (chỉ xóa record trên Firebase).
+  - Checkbox: "Also delete Cloudflare Zone" (chỉ hiển thị khi không chọn "Delete from app only", mặc định unchecked).
+
 Buttons: [Cancel] [Delete] (button-semantic-down style: red)
 ```
 
@@ -654,13 +773,15 @@ Buttons: [Cancel] [Delete] (button-semantic-down style: red)
 
 ```typescript
 // Luồng đăng ký domain (RegisterModal logic)
-async function registerDomain(subdomain: string, namespace: string) {
-  // 1. Đọc credentials từ store (đã decrypt)
-  const { dpdnsToken, cloudflareEmail, cloudflareApiKey, cloudflareAccountId } = store.credentials;
-  if (!dpdnsToken || !cloudflareApiKey) {
-    redirect('/settings');
-    return;
+async function registerDomain(subdomain: string, namespace: string, accountId: string) {
+  // 1. Tìm tài khoản tương ứng đã được giải mã từ store
+  const account = store.accounts.find(acc => acc.id === accountId);
+  if (!account || !account.dpdns.token || !account.cloudflare.api_key) {
+    throw new Error('Selected API account is invalid or missing credentials');
   }
+
+  const { token: dpdnsToken } = account.dpdns;
+  const { email: cloudflareEmail, api_key: cloudflareApiKey, account_id: cloudflareAccountId } = account.cloudflare;
 
   const fqdn = `${subdomain}${namespace}`;
   const slotType = getSlotType(namespace); // 'free' | 'paid'
@@ -669,7 +790,10 @@ async function registerDomain(subdomain: string, namespace: string) {
   // Step 1: Create Cloudflare Zone
   setStep(0, 'loading');
   try {
-    const cfRes = await CloudflareService.createZone(fqdn, cloudflareAccountId);
+    const cfRes = await CloudflareService.createZone(fqdn, cloudflareAccountId, {
+      email: cloudflareEmail,
+      apiKey: cloudflareApiKey
+    });
     cloudflareZoneId = cfRes.id;
     const nameservers = cfRes.name_servers; // ["anna.ns.cloudflare.com", ...]
     setStep(0, 'success');
@@ -679,12 +803,11 @@ async function registerDomain(subdomain: string, namespace: string) {
 
     // Step 3: Register on DPDNS
     setStep(2, 'loading');
-    await DPDNSService.registerDomain(fqdn, slotType, nameservers);
+    await DPDNSService.registerDomain(fqdn, slotType, nameservers, dpdnsToken);
     setStep(2, 'success');
 
     // Save to Firebase
-    const key = toFirebaseKey(fqdn); // ⚠️ SANITIZE KEY
-    await FirebaseService.saveDomain(uid, key, {
+    await FirebaseService.saveDomain(uid, {
       name: subdomain,
       namespace,
       fqdn,
@@ -694,14 +817,24 @@ async function registerDomain(subdomain: string, namespace: string) {
       notes: '',
       created_at: Date.now(),
       updated_at: Date.now(),
+      credentialAccountId: accountId
     });
   } catch (err) {
     // Rollback: nếu DPDNS fail và đã tạo CF zone → xóa CF zone
-    if (cloudflareZoneId && currentStep >= 2) {
-      await CloudflareService.deleteZone(cloudflareZoneId);
+    if (cloudflareZoneId) {
+      try {
+        logger.info('Cloudflare API', `Registration failed. Attempting to rollback Cloudflare zone ${cloudflareZoneId}...`);
+        await CloudflareService.deleteZone(cloudflareZoneId, {
+          email: cloudflareEmail,
+          apiKey: cloudflareApiKey
+        });
+        logger.info('Cloudflare API', `Rollback successful: Zone ${cloudflareZoneId} deleted.`);
+      } catch (rollbackError) {
+        logger.error('Cloudflare API', `Rollback failed: Unable to delete zone ${cloudflareZoneId}`, rollbackError);
+      }
     }
     setStep(currentStep, 'error');
-    showError(err);
+    throw err;
   }
 }
 
@@ -776,16 +909,15 @@ export const FirebaseService = {
     await update(ref, { ...updates, updated_at: Date.now() });
   },
 
-  // Credentials
-  async saveCredentials(uid: string, credentials: EncryptedCredentials): Promise<void> {
-    const ref = dbRef(db, `users/${uid}/settings/credentials`);
-    await set(ref, credentials);
+  // Credential Accounts
+  async saveCredentialAccount(uid: string, accountId: string, account: EncryptedCredentialAccount): Promise<void> {
+    const ref = dbRef(db, `users/${uid}/settings/accounts/${accountId}`);
+    await set(ref, account);
   },
 
-  async getCredentials(uid: string): Promise<EncryptedCredentials | null> {
-    const ref = dbRef(db, `users/${uid}/settings/credentials`);
-    const snap = await get(ref);
-    return snap.val();
+  async deleteCredentialAccount(uid: string, accountId: string): Promise<void> {
+    const ref = dbRef(db, `users/${uid}/settings/accounts/${accountId}`);
+    await remove(ref);
   },
 };
 ```
@@ -801,15 +933,9 @@ interface AppStore {
   user: User | null;
   setUser: (user: User | null) => void;
 
-  // Credentials (decrypted, in-memory only)
-  credentials: {
-    dpdnsToken: string;
-    cloudflareEmail: string;
-    cloudflareApiKey: string;
-    cloudflareAccountId: string;
-  } | null;
-  setCredentials: (creds: AppStore['credentials']) => void;
-  clearCredentials: () => void; // ← gọi khi logout
+  // Accounts (decrypted, in-memory only)
+  accounts: DecryptedCredentialAccount[];
+  setAccounts: (accounts: DecryptedCredentialAccount[]) => void;
 
   // Domains
   domains: DomainRecord[];
@@ -846,22 +972,45 @@ export interface DomainRecord {
   notes?: string;
   created_at: number;
   updated_at: number;
+  credentialAccountId?: string; // Linked account ID
   _key?: string; // Firebase key (sanitized), internal use only
 }
 
-export interface EncryptedCredentials {
+export interface EncryptedCredentialAccount {
+  id: string;
+  name: string;
   dpdns: {
     token: string; // encrypted
     verified: boolean;
     verified_at: number;
   };
   cloudflare: {
-    email: string; // plaintext (không nhạy cảm)
+    email: string; // plaintext
     api_key: string; // encrypted
     account_id: string; // plaintext
     verified: boolean;
     verified_at: number;
   };
+  created_at: number;
+  updated_at: number;
+}
+
+export interface DecryptedCredentialAccount {
+  id: string;
+  name: string;
+  dpdns: {
+    token: string; // decrypted
+    verified: boolean;
+    verified_at: number;
+  };
+  cloudflare: {
+    email: string; // plaintext
+    api_key: string; // decrypted
+    account_id: string; // plaintext
+    verified: boolean;
+    verified_at: number;
+  };
+  created_at: number;
   updated_at: number;
 }
 
@@ -889,6 +1038,14 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 # Encryption salt (thêm vào uid khi derive AES key)
 # Đặt giá trị random string dài ≥ 32 chars
 NEXT_PUBLIC_ENCRYPT_SALT=
+
+# Backend Secret Key cho các api route (e.g. /api/accounts)
+BACKEND_API_SECRET_KEY=
+
+# Danh sách email được phép đăng nhập ứng dụng (phân cách bởi dấu ; hoặc , hoặc |)
+# Ví dụ: user1@example.com;user2@example.com,user3@example.com
+# Nếu bỏ trống, tất cả mọi email đều được phép truy cập.
+NEXT_PUBLIC_ALLOWED_EMAILS=
 
 # (Optional) Firebase region — khuyến nghị asia-southeast1 cho VN users
 # FIREBASE_REGION=asia-southeast1
@@ -967,8 +1124,9 @@ NEXT_PUBLIC_ENCRYPT_SALT=
 □ [ ] Error states: toast + inline errors
 □ [ ] Responsive: mobile (375px) + tablet + desktop
 □ [ ] Vercel deployment + env vars
+□ [ ] PWA: webapp manifest.json + sw.js + PWARegistration client provider
 ```
 
 ---
 
-*Agent: Đọc toàn bộ spec này trước khi bắt đầu viết bất kỳ dòng code nào. Section 5.2 (Firebase Key Sanitization) và Section 7 (CORS Dual-Path) là 2 yêu cầu kỹ thuật quan trọng nhất, dễ bỏ sót nhất.*
+*Agent: Đọc toàn bộ spec này trước khi bắt đầu viết bất kỳ dòng code nào. Section 5.2 (Firebase Key Sanitization), Section 7 (CORS Dual-Path) và Section 8.4 (Logger) là các yêu cầu kỹ thuật quan trọng.*

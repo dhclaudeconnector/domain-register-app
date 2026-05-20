@@ -1,0 +1,92 @@
+@cfBaseUrl = https://api.cloudflare.com/client/v4
+@appBaseUrl = {{$dotenv NEXT_PUBLIC_APP_URL}}
+@cfEmail = {{$dotenv CLOUDFLARE_TEST_EMAIL}}
+@cfApiKey = {{$dotenv CLOUDFLARE_TEST_API_KEY}}
+@cfAccountId = {{$dotenv CLOUDFLARE_TEST_ACCOUNT_ID}}
+@zoneName = {{$dotenv CLOUDFLARE_TEST_ZONE_NAME}}
+@zoneId = {{$dotenv CLOUDFLARE_TEST_ZONE_ID}}
+
+### Cloudflare · Verify credentials (direct)
+GET {{cfBaseUrl}}/user
+X-Auth-Email: {{cfEmail}}
+X-Auth-Key: {{cfApiKey}}
+Content-Type: application/json
+
+### Cloudflare · Create zone (direct)
+POST {{cfBaseUrl}}/zones
+X-Auth-Email: {{cfEmail}}
+X-Auth-Key: {{cfApiKey}}
+Content-Type: application/json
+
+{
+  "name": "{{zoneName}}",
+  "account": { "id": "{{cfAccountId}}" },
+  "type": "full"
+}
+
+### Cloudflare · Find zone by name (direct)
+GET {{cfBaseUrl}}/zones?name={{zoneName}}&per_page=1
+X-Auth-Email: {{cfEmail}}
+X-Auth-Key: {{cfApiKey}}
+Content-Type: application/json
+
+### Cloudflare · Get zone details (direct)
+GET {{cfBaseUrl}}/zones/{{zoneId}}
+X-Auth-Email: {{cfEmail}}
+X-Auth-Key: {{cfApiKey}}
+Content-Type: application/json
+
+### Cloudflare · Delete zone (direct) — destructive
+DELETE {{cfBaseUrl}}/zones/{{zoneId}}
+X-Auth-Email: {{cfEmail}}
+X-Auth-Key: {{cfApiKey}}
+Content-Type: application/json
+
+### Cloudflare proxy · Verify credentials through Next.js route
+POST {{appBaseUrl}}/api/proxy/cloudflare
+Content-Type: application/json
+
+{
+  "endpoint": "/user",
+  "method": "GET",
+  "email": "{{cfEmail}}",
+  "apiKey": "{{cfApiKey}}"
+}
+
+### Cloudflare proxy · Create zone through Next.js route
+POST {{appBaseUrl}}/api/proxy/cloudflare
+Content-Type: application/json
+
+{
+  "endpoint": "/zones",
+  "method": "POST",
+  "email": "{{cfEmail}}",
+  "apiKey": "{{cfApiKey}}",
+  "body": {
+    "name": "{{zoneName}}",
+    "account": { "id": "{{cfAccountId}}" },
+    "type": "full"
+  }
+}
+
+### Cloudflare proxy · Find zone by name through Next.js route
+POST {{appBaseUrl}}/api/proxy/cloudflare
+Content-Type: application/json
+
+{
+  "endpoint": "/zones?name={{zoneName}}&per_page=1",
+  "method": "GET",
+  "email": "{{cfEmail}}",
+  "apiKey": "{{cfApiKey}}"
+}
+
+### Cloudflare proxy · Delete zone through Next.js route — destructive
+POST {{appBaseUrl}}/api/proxy/cloudflare
+Content-Type: application/json
+
+{
+  "endpoint": "/zones/{{zoneId}}",
+  "method": "DELETE",
+  "email": "{{cfEmail}}",
+  "apiKey": "{{cfApiKey}}"
+}

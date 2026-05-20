@@ -404,6 +404,66 @@ async function callWithFallback(
 
 ---
 
+## 6.5 Internal APIs — Backend Account Management
+
+### EP-ACCOUNTS-01 — Add / Update Account
+
+Cung cấp API để công cụ bên thứ ba hoặc backend tích hợp có thể thêm hoặc cập nhật tài khoản API Credentials cho người dùng.
+
+| Field | Value |
+|-------|-------|
+| Method | `POST` |
+| Path | `/api/accounts` |
+| Auth | Bearer Token (Cấu hình qua `BACKEND_API_SECRET_KEY`) |
+| Content-Type | `application/json` |
+
+**Headers:**
+```http
+Authorization: Bearer <BACKEND_API_SECRET_KEY>
+Content-Type: application/json
+```
+
+**Request Body (DPDNS Account):**
+```json
+{
+  "userId": "firebase-user-uid-12345",
+  "service": "dpdns",
+  "name": "My DPDNS Account",
+  "email": "cloudflare-email@example.com",
+  "token": "dpdns-token-here"
+}
+```
+
+**Request Body (Cloudflare Account):**
+```json
+{
+  "userId": "firebase-user-uid-12345",
+  "service": "cloudflare",
+  "name": "My Cloudflare Account",
+  "email": "cloudflare-email@example.com",
+  "apiKey": "cloudflare-api-key-here",
+  "accountId": "cloudflare-account-id-here"
+}
+```
+
+**Success Response `200`:**
+```json
+{
+  "success": true,
+  "accountId": "acc_xyz789",
+  "action": "created" // hoặc "updated"
+}
+```
+
+**Error Response `400` / `401` / `500`:**
+```json
+{
+  "error": "Error message details here."
+}
+```
+
+---
+
 ## 6.6 Sequence Diagram — Luồng đầy đủ (với CORS fallback)
 
 ```

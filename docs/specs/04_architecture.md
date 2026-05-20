@@ -52,15 +52,15 @@
 
 | Component | Mô tả |
 |-----------|-------|
-| `SettingsPage` | Cấu hình API credentials (DPDNS Token, Cloudflare Key + Email) |
-| `DashboardPage` | Trang chính: danh sách domain realtime + "Register New Domain" CTA |
-| `RegisterModal` | Modal đăng ký domain, step indicator 3 bước |
-| `DomainCard` / `DomainRow` | Component 1 domain — Coinbase asset-row style |
-| `EditDomainModal` | Sửa nameserver + notes |
-| `ConfirmDeleteDialog` | Dialog xác nhận xoá, hiển thị cảnh báo `pendingdelete` 7 ngày |
-| `CredentialsForm` | Form nhập/cập nhật credentials có masking |
-| `StepIndicator` | 3-bước progress visual (Cloudflare → NS → DPDNS) |
-| `StatusBadge` | Badge pill: `ok` (xanh), `pendingdelete` (đỏ), `pending` (vàng) |
+| `SettingsPage` | Trang cấu hình tài khoản API Credentials |
+| `DashboardPage` | Trang chính: danh sách domain realtime + nút bấm mở modal đăng ký |
+| `RegisterModal` | Modal đăng ký domain có dropdown chọn tài khoản và step indicator |
+| `DomainCard` / `DomainRow` | Component 1 domain — hiển thị thông tin domain và badge email Cloudflare của tài khoản liên kết |
+| `EditDomainModal` | Sửa nameserver + ghi chú |
+| `ConfirmDeleteDialog` | Dialog xác nhận xoá, cho phép lựa chọn tài khoản để gọi API cleanup hoặc xóa record-only |
+| `CredentialsForm` | Giao diện quản lý nhiều tài khoản, bao gồm cả list view và form thêm/sửa, hỗ trợ test kết nối độc lập |
+| `StepIndicator` | Tiến trình visual 3 bước (Cloudflare Zone → Lấy NS → Đăng ký DPDNS) |
+| `StatusBadge` | Badge pill trạng thái: `active` (xanh), `pending` (vàng), `error`/`deleted` (đỏ) |
 
 ### 4.2.2 Service Layer
 
@@ -68,9 +68,9 @@
 |---------|------|---------|
 | `DPDNSService` | `services/dpdns.service.ts` | List, register, update NS, delete — dual-path |
 | `CloudflareService` | `services/cloudflare.service.ts` | Create zone, get NS, delete zone — dual-path |
-| `FirebaseService` | `services/firebase.service.ts` | CRUD domain records, credentials, realtime listener |
+| `FirebaseService` | `services/firebase.service.ts` | CRUD domain records, CRUD accounts, realtime listener |
 | `ApiCaller` | `services/api-caller.ts` | Dual-path fetch wrapper (direct → proxy fallback) |
-| `CredentialsService` | `services/credentials.service.ts` | Đọc/ghi/mã hoá credentials |
+| `CredentialsService` | `services/credentials.service.ts` | Đọc/ghi/mã hoá tài khoản và tự động di chuyển cấu hình cũ |
 
 ### 4.2.3 Next.js API Routes (CORS Proxy)
 
@@ -84,34 +84,34 @@
 ## 4.3 Data Flow — Luồng đăng ký domain
 
 ```
-User bấm "Register"
+User bấm "Register Domain"
        │
        ▼
-[1] Đọc credentials từ Firebase (decrypt)
+[1] Tải danh sách accounts từ Firebase (decrypt tokens)
        │
        ▼
-[2] Validate: DPDNS Token & CF Key có sẵn?
-    └── Không → Redirect Settings
+[2] Người dùng nhập subdomain, chọn namespace và chọn một Account trong list
        │
        ▼
-[3] CloudflareService.createZone(domain)
+[3] CloudflareService.createZone(domain) sử dụng API Key của Account được chọn
     [dual-path: direct → proxy fallback]
     ├── Lỗi → STOP, hiển thị lỗi
     └── OK  → zone_id + name_servers[]
        │
        ▼
-[4] DPDNSService.registerDomain(domain, slot_type, nameservers)
+[4] DPDNSService.registerDomain(domain, slot_type, nameservers) sử dụng DPDNS Token của Account được chọn
     [dual-path: direct → proxy fallback]
     ├── Lỗi → CloudflareService.deleteZone(zone_id) [rollback]
     └── OK  → tiếp tục
        │
        ▼
 [5] FirebaseService.saveDomain({ fqdn, zone_id, nameservers,
-      slot_type, status: "active", created_at, updated_at })
+      slot_type, status: "active", created_at, updated_at, credentialAccountId })
        │
        ▼
 [6] UI realtime update qua Firebase onValue()
 ```
+
 
 ---
 

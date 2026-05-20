@@ -1,0 +1,73 @@
+@appBaseUrl = {{$dotenv NEXT_PUBLIC_APP_URL}}
+@dpdnsToken = {{$dotenv DPDNS_TEST_TOKEN}}
+@testDomain = {{$dotenv DPDNS_TEST_DOMAIN}}
+@slotType = {{$dotenv DPDNS_TEST_SLOT_TYPE}}
+@cfEmail = {{$dotenv CLOUDFLARE_TEST_EMAIL}}
+@cfApiKey = {{$dotenv CLOUDFLARE_TEST_API_KEY}}
+@cfAccountId = {{$dotenv CLOUDFLARE_TEST_ACCOUNT_ID}}
+@zoneId = {{$dotenv CLOUDFLARE_TEST_ZONE_ID}}
+@ns1 = {{$dotenv DPDNS_TEST_NS1}}
+@ns2 = {{$dotenv DPDNS_TEST_NS2}}
+
+### Flow 1 · Verify DPDNS token via local proxy
+POST {{appBaseUrl}}/api/proxy/dpdns
+Content-Type: application/json
+
+{
+  "endpoint": "/api/v1/domains",
+  "method": "GET",
+  "token": "{{dpdnsToken}}"
+}
+
+### Flow 2 · Verify Cloudflare credentials via local proxy
+POST {{appBaseUrl}}/api/proxy/cloudflare
+Content-Type: application/json
+
+{
+  "endpoint": "/user",
+  "method": "GET",
+  "email": "{{cfEmail}}",
+  "apiKey": "{{cfApiKey}}"
+}
+
+### Flow 3 · Create Cloudflare zone; copy result.id into CLOUDFLARE_TEST_ZONE_ID and name_servers into DPDNS_TEST_NS1/2
+POST {{appBaseUrl}}/api/proxy/cloudflare
+Content-Type: application/json
+
+{
+  "endpoint": "/zones",
+  "method": "POST",
+  "email": "{{cfEmail}}",
+  "apiKey": "{{cfApiKey}}",
+  "body": {
+    "name": "{{testDomain}}",
+    "account": { "id": "{{cfAccountId}}" },
+    "type": "full"
+  }
+}
+
+### Flow 4 · Register domain on DPDNS with Cloudflare nameservers
+POST {{appBaseUrl}}/api/proxy/dpdns
+Content-Type: application/json
+
+{
+  "endpoint": "/api/v1/domains",
+  "method": "POST",
+  "token": "{{dpdnsToken}}",
+  "body": {
+    "domain": "{{testDomain}}",
+    "slot_type": "{{slotType}}",
+    "nameservers": ["{{ns1}}", "{{ns2}}"]
+  }
+}
+
+### Flow rollback · Delete Cloudflare zone when DPDNS registration failed — destructive
+POST {{appBaseUrl}}/api/proxy/cloudflare
+Content-Type: application/json
+
+{
+  "endpoint": "/zones/{{zoneId}}",
+  "method": "DELETE",
+  "email": "{{cfEmail}}",
+  "apiKey": "{{cfApiKey}}"
+}

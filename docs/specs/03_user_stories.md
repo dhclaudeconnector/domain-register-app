@@ -28,50 +28,49 @@
 
 ---
 
-### Epic 1 — Thiết lập API Credentials
+### Epic 1 — Thiết lập nhiều tài khoản API Credentials
 
-**US-001 — Lưu DigitalPlat Token**
+**US-001 — Quản lý danh sách tài khoản API Credentials**
 > As a **Tuấn (developer)**,
-> I want to **nhập và lưu DigitalPlat API Token của tôi một lần**,
-> So that **tôi không cần paste token lại mỗi lần đăng ký domain mới**.
+> I want to **lưu và quản lý danh sách nhiều tài khoản (mỗi tài khoản gồm DPDNS và Cloudflare API)**,
+> So that **tôi có thể dễ dàng quản lý domain cho các tổ chức, khách hàng hoặc tài khoản cá nhân khác nhau**.
 
 **Acceptance Criteria:**
-- [ ] Có form nhập DigitalPlat Bearer Token với label rõ ràng
-- [ ] Sau khi lưu, token hiển thị dạng masked (e.g. `eyJhbGc...****...xYz`)
-- [ ] Có nút "Test Connection" gọi thử API để xác nhận token hợp lệ
-- [ ] Toast notification hiển thị "Token saved successfully" hoặc lỗi cụ thể
-- [ ] Token được ghi vào Firebase node `/settings/credentials/dpdns_token`
+- [ ] Có giao diện hiển thị danh sách các tài khoản đang cấu hình.
+- [ ] Mỗi tài khoản hiển thị: Friendly Name, Cloudflare Email và các badge trạng thái kết nối DPDNS / Cloudflare.
+- [ ] Có thể bấm nút "Add Account" để mở form thêm mới.
+- [ ] Có thể nhấn Edit hoặc Delete cho từng tài khoản riêng biệt.
+- [ ] Tự động chuyển đổi dữ liệu từ thiết lập đơn cũ sang danh sách tài khoản (auto-migration).
+- [ ] Cấu hình lưu vào Firebase Realtime Database dưới node `/users/{uid}/settings/accounts/{accountId}`.
 
 ---
 
-**US-002 — Lưu Cloudflare Global API Key**
+**US-002 — Thêm mới và chỉnh sửa tài khoản API Credentials**
 > As a **Tuấn (developer)**,
-> I want to **lưu Cloudflare Email và Global API Key của tôi**,
-> So that **ứng dụng có thể tự động tạo zone Cloudflare thay tôi**.
+> I want to **nhập đầy đủ API credentials của DPDNS và Cloudflare trong cùng một form và kiểm tra kết nối**,
+> So that **tôi biết chắc chắn cấu hình là chính xác trước khi lưu**.
 
 **Acceptance Criteria:**
-- [ ] Form gồm 2 trường: Email và Global API Key
-- [ ] Validate email format trước khi lưu
-- [ ] Gọi `GET https://api.cloudflare.com/client/v4/user` để xác nhận credentials hợp lệ
-- [ ] Hiển thị tên tài khoản Cloudflare sau khi xác nhận thành công
-- [ ] Credentials lưu vào Firebase `/settings/credentials/cloudflare`
+- [ ] Form gồm các trường: Friendly Name, DPDNS Token, Cloudflare Email, Account ID (tự động điền nếu trống), Cloudflare Global API Key.
+- [ ] Cho phép test riêng biệt kết nối DPDNS (qua API list domains) và Cloudflare (qua user profile verification API).
+- [ ] Hiển thị thông báo thành công hoặc lỗi cụ thể cho từng API.
+- [ ] Khi lưu, thực hiện verify lại cả hai kết nối trước khi hoàn tất lưu thông tin (ở dạng mã hóa AES-256).
 
 ---
 
 ### Epic 2 — Đăng ký Domain
 
-**US-010 — Đăng ký domain mới**
+**US-010 — Đăng ký domain mới sử dụng tài khoản được chọn**
 > As a **Tuấn (developer)**,
-> I want to **nhập tên domain và bấm một nút để hoàn thành toàn bộ quy trình đăng ký**,
-> So that **tôi không phải vào DigitalPlat và Cloudflare riêng lẻ nữa**.
+> I want to **chọn một tài khoản API phù hợp từ danh sách trước khi đăng ký domain**,
+> So that **domain được quản lý đúng tài khoản Cloudflare và tài khoản DPDNS mà tôi mong muốn**.
 
 **Acceptance Criteria:**
-- [ ] Form có trường nhập subdomain và dropdown chọn namespace (`.dpdns.org`, `.us.kg`, `.qzz.io`, `.xx.kg`)
-- [ ] Validate format domain: chỉ chứa `[a-z0-9-]`, không bắt đầu/kết thúc bằng `-`
-- [ ] Hiển thị step indicator với 3 bước: ① Tạo Cloudflare Zone → ② Lấy Nameserver → ③ Đăng ký DPDNS
-- [ ] Mỗi bước hiển thị trạng thái: ⏳ Processing → ✅ Done hoặc ❌ Failed
-- [ ] Sau khi hoàn thành, domain xuất hiện ngay trong danh sách (realtime)
-- [ ] Nếu thất bại ở bước 3, Cloudflare zone đã tạo ở bước 1 được xoá (rollback)
+- [ ] Form đăng ký có trường dropdown chọn tài khoản (AccountId).
+- [ ] Dropdown hiển thị: Tên tài khoản và Cloudflare email. Nếu chỉ có 1 tài khoản, tự động chọn tài khoản đó.
+- [ ] Nếu chưa cấu hình tài khoản nào, modal hiển thị cảnh báo và chuyển hướng người dùng đến trang Settings.
+- [ ] Hiển thị step indicator với 3 bước sử dụng API credentials của tài khoản đã chọn.
+- [ ] Sau khi đăng ký thành công, lưu `credentialAccountId` vào domain record của Firebase.
 
 ---
 
@@ -81,25 +80,23 @@
 > So that **tôi hiểu hệ thống đang làm gì và biết khi nào xong**.
 
 **Acceptance Criteria:**
-- [ ] Hiển thị 3 bước với icon trạng thái
-- [ ] Mỗi bước có mô tả ngắn bằng tiếng Việt (e.g. "Đang tạo zone trên Cloudflare...")
-- [ ] Thời gian thực hiện từng bước được hiển thị sau khi hoàn thành
-- [ ] Sau khi hoàn thành toàn bộ: hiển thị summary card với nameservers
+- [ ] Hiển thị 3 bước với icon trạng thái.
+- [ ] Mỗi bước có mô tả ngắn bằng tiếng Việt.
+- [ ] Sau khi hoàn thành toàn bộ: tự động đóng modal hoặc hiển thị summary thành công.
 
 ---
 
 ### Epic 3 — Xem & Quản lý Domain
 
-**US-020 — Xem danh sách domain**
+**US-020 — Xem danh sách domain kèm thông tin tài khoản**
 > As a **Linh (DevOps)**,
-> I want to **thấy danh sách tất cả domain đã đăng ký với đầy đủ thông tin**,
-> So that **tôi biết domain nào đang hoạt động và được tạo lúc nào**.
+> I want to **thấy danh sách tất cả domain đã đăng ký cùng thông tin tài khoản Cloudflare quản lý nó**,
+> So that **tôi biết chính xác domain nào được quản lý bởi tài khoản nào**.
 
 **Acceptance Criteria:**
-- [ ] Danh sách hiển thị: tên domain, namespace, nameservers, created_at, updated_at
-- [ ] Dữ liệu cập nhật realtime (Firebase `onValue` listener)
-- [ ] Hiển thị "Không có domain nào" khi list rỗng, kèm CTA "Đăng ký domain đầu tiên"
-- [ ] Có thể copy nameserver vào clipboard bằng một click
+- [ ] Mỗi domain hiển thị thêm nhãn (badge) ghi email Cloudflare của tài khoản liên kết (`CF: user@email.com`).
+- [ ] Dữ liệu cập nhật realtime (Firebase `onValue` listener).
+- [ ] Có thể copy nhanh nameserver.
 
 ---
 
@@ -109,25 +106,24 @@
 > So that **tôi có thể chuyển domain sang DNS provider khác nếu cần**.
 
 **Acceptance Criteria:**
-- [ ] Có nút Edit trên mỗi domain row
-- [ ] Form edit hiển thị nameservers hiện tại, cho phép sửa
-- [ ] Sau khi save, hệ thống gọi DigitalPlat API để cập nhật NS
-- [ ] `updated_at` được cập nhật trong Firebase
-- [ ] Hiển thị trạng thái "Updating..." trong quá trình gọi API
+- [ ] Có nút Edit trên mỗi domain row.
+- [ ] Cập nhật nameservers đồng bộ lên DigitalPlat bằng tài khoản liên kết của domain.
+- [ ] `updated_at` được cập nhật trong Firebase.
 
 ---
 
-**US-040 — Xoá domain khỏi danh sách**
+**US-040 — Xoá domain với tùy chọn API cleanup và fallback tài khoản**
 > As a **Tuấn (developer)**,
-> I want to **xoá domain không còn dùng nữa khỏi danh sách quản lý**,
-> So that **danh sách luôn gọn gàng và chỉ hiện những domain đang active**.
+> I want to **chọn cách thức xóa domain phù hợp kể cả khi tài khoản liên kết gốc đã bị xóa**,
+> So that **tôi có thể dọn dẹp domain khỏi DPDNS/Cloudflare hoặc chỉ dọn dẹp record trong cơ sở dữ liệu**.
 
 **Acceptance Criteria:**
-- [ ] Có nút Delete trên mỗi domain row
-- [ ] Confirmation dialog hiển thị tên domain và cảnh báo hành động không thể hoàn tác
-- [ ] Checkbox opt-in: "Đồng thời xoá Cloudflare Zone" (mặc định unchecked)
-- [ ] Sau khi xác nhận, record được xoá khỏi Firebase ngay lập tức
-- [ ] Toast notification: "Domain `myapp.dpdns.org` đã được xoá"
+- [ ] Dialog hiển thị tài khoản thực thi API cleanup (mặc định chọn tài khoản liên kết gốc).
+- [ ] Nếu tài khoản liên kết gốc bị thiếu/bị xóa, dialog hiển thị cảnh báo và cho phép chọn tài khoản hoạt động khác để gọi API xóa domain.
+- [ ] Cung cấp lựa chọn "Delete from app only" (chỉ xóa Firebase record, không gọi các API).
+- [ ] Checkbox: "Also delete Cloudflare Zone" chỉ xuất hiện khi không chọn chế độ delete-only.
+- [ ] Sau khi xóa, record Firebase được xóa và cập nhật danh sách realtime.
+
 
 ---
 

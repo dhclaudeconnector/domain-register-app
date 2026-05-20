@@ -1,0 +1,18 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "domains": {
+          ".indexOn": ["created_at", "status"],
+          "$domainId": {
+            ".validate": "newData.hasChildren(['name', 'namespace', 'fqdn', 'status', 'created_at']) && newData.child('fqdn').isString() && newData.child('status').val().matches(/^(active|pending|error|deleted)$/) && newData.child('created_at').isNumber()"
+          }
+        }
+      }
+    }
+  }
+}

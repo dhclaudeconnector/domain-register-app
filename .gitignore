@@ -1,5 +1,7 @@
 *gitignore*/**
-
+*.claude/worktrees/**
+.claude/settings.local.json
+__tests__/**
 # ── Node.js ──────────────────────────────────────────
 node_modules/
 npm-debug.log*
